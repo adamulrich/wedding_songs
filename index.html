@@ -4,94 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Wedding Songs</title>
-
-<style>
-    body {
-        font-family: "Georgia", serif;
-        background: #f4f9ff; /* very light blue */
-        margin: 0;
-        padding: 40px;
-        color: #444;
-    }
-
-    h1 {
-        text-align: center;
-        font-size: 2.5rem;
-        margin-bottom: 20px;
-        color: #2a6f97; /* deep soft blue */
-    }
-
-    /* Single album art at the top */
-    .album-art-top {
-        width: 320px;
-        height: 320px;
-        margin: 0 auto 35px auto;
-        border-radius: 14px;
-        background-image: url('images/album_art_small.png');
-        background-size: cover;
-        background-position: center;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border: 4px solid #ffb27c; /* soft orange border */
-    }
-
-    .song-list {
-        max-width: 750px;
-        margin: 0 auto;
-    }
-
-    .song {
-        background: white;
-        padding: 20px;
-        margin-bottom: 20px;
-        border-radius: 12px;
-        border-left: 6px solid #ffb27c; /* orange accent */
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .song-title {
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: #2a6f97; /* blue */
-    }
-
-    .controls {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-    }
-
-    button {
-        padding: 8px 14px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        background: #a3d5ff; /* light blue button */
-        color: #083d77;
-        font-size: 0.9rem;
-        font-weight: bold;
-    }
-
-    button:hover {
-        background: #8bc9ff;
-    }
-
-    a.download {
-        text-decoration: none;
-        padding: 8px 14px;
-        background: #ffb27c; /* orange */
-        color: white;
-        border-radius: 6px;
-        font-size: 0.9rem;
-        font-weight: bold;
-    }
-
-    a.download:hover {
-        background: #ffa366;
-    }
-</style>
+<link rel="stylesheet" href="style/base.css" />
+<script defer src="script/script.js"></script>
 </head>
 
 <body>
@@ -99,7 +13,21 @@
 
 <!-- Single album art placeholder -->
 <div class="album-art-top"></div>
+<div id="player-controls" style="text-align:center; margin-bottom:25px;">
+    <div id="now-playing" style="font-size:1.3rem; font-weight:bold; color:#2a6f97; margin-bottom:10px;">
+        
+    </div>
 
+    <button onclick="prevTrack()">⏮ Back</button>
+    <button onclick="toggleGlobalPlay()" id="globalPlayBtn">▶ Play</button>
+    <button onclick="nextTrack()">⏭ Next</button>
+    <button onclick="stopPlayback()">⏹ Stop</button>
+    <button onclick="toggleLoop()" id="loopBtn">🔁 Loop: Off</button>
+    <button onclick="toggleShuffle()" id="shuffleBtn">🔀 Shuffle: Off</button>
+    <div id="global-progress-container">
+        <div id="global-progress-bar"></div>
+    </div>
+</div>
 <div class="song-list">
 
     <div class="song">
@@ -109,6 +37,7 @@
             <button onclick="togglePlay(this)">Play</button>
             <a class="download" href="songs/01 Forever and Always.mp3" download>Download</a>
         </div>
+        
     </div>
 
     <div class="song">
@@ -118,6 +47,8 @@
             <button onclick="togglePlay(this)">Play</button>
             <a class="download" href="songs/02 Nothing's Better.mp3" download>Download</a>
         </div>
+                
+
     </div>
 
     <div class="song">
@@ -127,6 +58,7 @@
             <button onclick="togglePlay(this)">Play</button>
             <a class="download" href="songs/03 Mi Mariposa.mp3" download>Download</a>
         </div>
+        
     </div>
 
     <div class="song">
@@ -136,6 +68,7 @@
             <button onclick="togglePlay(this)">Play</button>
             <a class="download" href="songs/04 Daydream.mp3" download>Download</a>
         </div>
+        
     </div>
 
     <div class="song">
@@ -145,6 +78,7 @@
             <button onclick="togglePlay(this)">Play</button>
             <a class="download" href="songs/05 Not a Moment (With You).mp3" download>Download</a>
         </div>
+        
     </div>
 
     <div class="song">
@@ -154,6 +88,7 @@
             <button onclick="togglePlay(this)">Play</button>
             <a class="download" href="songs/06 Just Like You Love Me.mp3" download>Download</a>
         </div>
+        
     </div>
 
     <div class="song">
@@ -163,6 +98,7 @@
             <button onclick="togglePlay(this)">Play</button>
             <a class="download" href="songs/07 Eres Para Mi.mp3" download>Download</a>
         </div>
+        
     </div>
 
     <div class="song">
@@ -172,6 +108,7 @@
             <button onclick="togglePlay(this)">Play</button>
             <a class="download" href="songs/08 Let Her Dance.mp3" download>Download</a>
         </div>
+        
     </div>
 
     <div class="song">
@@ -181,6 +118,7 @@
             <button onclick="togglePlay(this)">Play</button>
             <a class="download" href="songs/09 Hopeless Romantic.mp3" download>Download</a>
         </div>
+        
     </div>
 
     <div class="song">
@@ -190,6 +128,7 @@
             <button onclick="togglePlay(this)">Play</button>
             <a class="download" href="songs/10 Your Song.mp3" download>Download</a>
         </div>
+        
     </div>
 
     <div class="song">
@@ -199,6 +138,7 @@
             <button onclick="togglePlay(this)">Play</button>
             <a class="download" href="songs/11 If.mp3" download>Download</a>
         </div>
+        
     </div>
 
     <div class="song">
@@ -208,6 +148,7 @@
             <button onclick="togglePlay(this)">Play</button>
             <a class="download" href="songs/12 A Thousand Years.mp3" download>Download</a>
         </div>
+        
     </div>
 
     <div class="song">
@@ -217,6 +158,7 @@
             <button onclick="togglePlay(this)">Play</button>
             <a class="download" href="songs/13 You and Me.mp3" download>Download</a>
         </div>
+        
     </div>
 
     <div class="song">
@@ -226,6 +168,7 @@
             <button onclick="togglePlay(this)">Play</button>
             <a class="download" href="songs/14 And I Love You So.mp3" download>Download</a>
         </div>
+        
     </div>
 
     <div class="song">
@@ -234,34 +177,11 @@
         <div class="controls">
             <button onclick="togglePlay(this)">Play</button>
             <a class="download" href="songs/15 Heaven Must Be Missing an Angel.mp3" download>Download</a>
-        </div>
+        </div>      
     </div>
 
 </div>
 
-<script>
-function togglePlay(button) {
-    const audio = button.parentElement.previousElementSibling;
-
-    // Pause all other audio elements
-    document.querySelectorAll("audio").forEach(a => {
-        if (a !== audio) {
-            a.pause();
-            a.currentTime = 0;
-            const btn = a.parentElement.querySelector("button");
-            if (btn) btn.textContent = "Play";
-        }
-    });
-
-    if (audio.paused) {
-        audio.play();
-        button.textContent = "Pause";
-    } else {
-        audio.pause();
-        button.textContent = "Play";
-    }
-}
-</script>
 
 </body>
 </html>
