@@ -42,7 +42,7 @@ function playTrack(index) {
         a.pause();
         a.currentTime = 0;
         const btn = a.closest(".song").querySelector(".controls button");
-        if (btn) btn.textContent = "Play";
+        if (btn) btn.textContent = "▶";
     });
 
     currentIndex = index;
@@ -55,7 +55,7 @@ function playTrack(index) {
     const btn = audio.closest(".song").querySelector(".controls button");
 
     audio.play();
-    if (btn) btn.textContent = "Pause";
+    if (btn) btn.textContent = "⏸";
     globalPlayBtn.textContent = "⏸ Pause";
 
     updateNowPlaying();
@@ -103,11 +103,11 @@ function togglePlay(button) {
     // Toggle play/pause on the current track
     if (audio.paused) {
         audio.play();
-        button.textContent = "Pause";
+        button.textContent = "⏸";
         globalPlayBtn.textContent = "⏸ Pause";
     } else {
         audio.pause();
-        button.textContent = "Play";
+        button.textContent = "▶";
         globalPlayBtn.textContent = "▶ Play";
     }
 
@@ -137,11 +137,11 @@ function toggleGlobalPlay() {
     if (audio.paused) {
         audio.play();
         globalPlayBtn.textContent = "⏸ Pause";
-        if (btn) btn.textContent = "Pause";
+        if (btn) btn.textContent = "⏸";
     } else {
         audio.pause();
         globalPlayBtn.textContent = "▶ Play";
-        if (btn) btn.textContent = "Play";
+        if (btn) btn.textContent = "▶";
     }
 
     updateNowPlaying();
@@ -185,13 +185,13 @@ function prevTrack() {
             a.pause();
             a.currentTime = 0;
             const btn = a.closest(".song").querySelector(".controls button");
-            if (btn) btn.textContent = "Play";
+            if (btn) btn.textContent = "▶";
         });
 
         // Play previous
         audio.play();
         const btn = audio.closest(".song").querySelector(".controls button");
-        if (btn) btn.textContent = "Pause";
+        if (btn) btn.textContent = "⏸";
         globalPlayBtn.textContent = "⏸ Pause";
 
         updateNowPlaying();
@@ -212,7 +212,7 @@ function stopPlayback() {
         audio.currentTime = 0;
 
         const btn = audio.closest(".song").querySelector(".controls button");
-        if (btn) btn.textContent = "Play";
+        if (btn) btn.textContent = "▶";
     }
 
     currentIndex = -1;
