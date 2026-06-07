@@ -1,152 +1,262 @@
 const audioElements = Array.from(document.querySelectorAll("audio"));
 const globalProgressContainer = document.getElementById("global-progress-container");
 const globalProgressBar = document.getElementById("global-progress-bar");
+const nowPlayingText = document.getElementById("now-playing");
+const globalPlayBtn = document.getElementById("globalPlayBtn");
+const loopBtn = document.getElementById("loopBtn");
+const shuffleBtn = document.getElementById("shuffleBtn");
+
 let currentIndex = -1;
 let loopEnabled = false;
 let shuffleEnabled = false;
 let playHistory = [];
+let mediaSessionHandlersRegistered = false;
 
-const nowPlayingText = document.getElementById("now-playing");
-const globalPlayBtn = document.getElementById("globalPlayBtn");
-const loopBtn = document.getElementById("loopBtn");
-
-function toggleShuffle() {
-    shuffleEnabled = !shuffleEnabled;
-    shuffleBtn.textContent = shuffleEnabled ? "🔀 Shuffle: On" : "🔀 Shuffle: Off";
+function supportsMediaSession() {
+    return "mediaSession" in navigator;
 }
 
-// Safely get the title for a given audio element
 function getTitleForAudio(audio) {
     const songContainer = audio.closest(".song");
     const titleEl = songContainer ? songContainer.querySelector(".song-title") : null;
     return titleEl ? titleEl.textContent.trim() : "(unknown)";
 }
 
-// Update "Now Playing" text
-function updateNowPlaying() {
-    if (currentIndex >= 0) {
-        const audio = audioElements[currentIndex];
-        const title = getTitleForAudio(audio);
-        nowPlayingText.textContent = title;
-    } else {
-        nowPlayingText.textContent = "";
+function setSongButtonState(audio, isPlaying) {
+    const button = audio.closest(".song").querySelector(".controls button");
+    if (button) {
+        button.textContent = isPlaying ? "Pause" : "Play";
     }
 }
 
-// Play a specific track by index
-function playTrack(index) {
-    if (index < 0 || index >= audioElements.length) return;
+function updatePlaybackState() {
+    if (!supportsMediaSession()) return;
 
-    // Stop all others
-    audioElements.forEach((a) => {
-        a.pause();
-        a.currentTime = 0;
-        const btn = a.closest(".song").querySelector(".controls button");
-        if (btn) btn.textContent = "▶";
+    if (currentIndex === -1) {
+        navigator.mediaSession.playbackState = "none";
+        return;
+    }
+
+    const audio = audioElements[currentIndex];
+    navigator.mediaSession.playbackState = audio.paused ? "paused" : "playing";
+}
+
+function updatePositionState() {
+    if (!supportsMediaSession() || currentIndex === -1) return;
+
+    const audio = audioElements[currentIndex];
+    if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
+
+    try {
+        navigator.mediaSession.setPositionState({
+            duration: audio.duration,
+            playbackRate: audio.playbackRate || 1,
+            position: audio.currentTime
+        });
+    } catch (error) {
+        // Browsers vary in Media Session support; ignore unsupported position updates.
+    }
+}
+
+function updateMediaSessionMetadata() {
+    if (!supportsMediaSession()) return;
+
+    if (currentIndex === -1) {
+        navigator.mediaSession.metadata = null;
+        updatePlaybackState();
+        return;
+    }
+
+    const audio = audioElements[currentIndex];
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title: getTitleForAudio(audio),
+        artist: "Jackson & Karla",
+        album: "Wedding Songs",
+        artwork: [
+            { src: "images/album_art_small.png", sizes: "512x512", type: "image/png" },
+            { src: "images/icon-512.png", sizes: "512x512", type: "image/png" },
+            { src: "images/icon-192.png", sizes: "192x192", type: "image/png" }
+        ]
     });
 
-    currentIndex = index;
-
-    // Record history only if it's not a duplicate of the last entry
-    if (playHistory[playHistory.length - 1] !== index) {
-        playHistory.push(index);
-    }
-    const audio = audioElements[index];
-    const btn = audio.closest(".song").querySelector(".controls button");
-
-    audio.play();
-    if (btn) btn.textContent = "⏸";
-    globalPlayBtn.textContent = "⏸ Pause";
-
-    updateNowPlaying();
+    updatePlaybackState();
+    updatePositionState();
 }
-// Auto-play next track when one ends
-audioElements.forEach((audio, index) => {
-    audio.addEventListener("ended", () => {
 
-        // If shuffle is ON → pick a random track
-        if (shuffleEnabled) {
-            let newIndex;
-            do {
-                newIndex = Math.floor(Math.random() * audioElements.length);
-            } while (newIndex === index && audioElements.length > 1);
+function registerMediaSessionHandlers() {
+    if (!supportsMediaSession() || mediaSessionHandlersRegistered) return;
 
-            playTrack(newIndex);
+    navigator.mediaSession.setActionHandler("play", () => {
+        if (currentIndex === -1) {
+            playTrack(shuffleEnabled ? Math.floor(Math.random() * audioElements.length) : 0);
             return;
         }
 
-        // Otherwise follow normal next/loop logic
-        const next = audioElements[index + 1];
-
-        if (next) {
-            playTrack(index + 1);
-        } else if (loopEnabled) {
-            playTrack(0);
-        } else {
-            globalPlayBtn.textContent = "▶ Play";
-            currentIndex = -1;
-            updateNowPlaying();
+        const audio = audioElements[currentIndex];
+        if (audio.paused) {
+            audio.play();
+            setSongButtonState(audio, true);
+            globalPlayBtn.textContent = "Pause";
+            updatePlaybackState();
         }
     });
-});
-// Global controls
+
+    navigator.mediaSession.setActionHandler("pause", () => {
+        if (currentIndex === -1) return;
+
+        const audio = audioElements[currentIndex];
+        if (!audio.paused) {
+            audio.pause();
+            setSongButtonState(audio, false);
+            globalPlayBtn.textContent = "Play";
+            updatePlaybackState();
+        }
+    });
+
+    navigator.mediaSession.setActionHandler("previoustrack", () => {
+        prevTrack();
+    });
+
+    navigator.mediaSession.setActionHandler("nexttrack", () => {
+        nextTrack();
+    });
+
+    navigator.mediaSession.setActionHandler("seekto", (details) => {
+        if (currentIndex === -1 || details.seekTime == null) return;
+
+        const audio = audioElements[currentIndex];
+        if (details.fastSeek && typeof audio.fastSeek === "function") {
+            audio.fastSeek(details.seekTime);
+        } else {
+            audio.currentTime = details.seekTime;
+        }
+
+        updatePositionState();
+    });
+
+    navigator.mediaSession.setActionHandler("stop", () => {
+        stopPlayback();
+    });
+
+    mediaSessionHandlersRegistered = true;
+}
+
+function updateNowPlaying() {
+    if (currentIndex >= 0) {
+        nowPlayingText.textContent = getTitleForAudio(audioElements[currentIndex]);
+    } else {
+        nowPlayingText.textContent = "";
+    }
+
+    updateMediaSessionMetadata();
+}
+
+function stopAllTracks() {
+    audioElements.forEach((audio) => {
+        audio.pause();
+        audio.currentTime = 0;
+        setSongButtonState(audio, false);
+    });
+}
+
+function playTrack(index) {
+    if (index < 0 || index >= audioElements.length) return;
+
+    stopAllTracks();
+    currentIndex = index;
+
+    if (playHistory[playHistory.length - 1] !== index) {
+        playHistory.push(index);
+    }
+
+    const audio = audioElements[index];
+    audio.play();
+    setSongButtonState(audio, true);
+    globalPlayBtn.textContent = "Pause";
+
+    updateNowPlaying();
+    updatePlaybackState();
+}
+
+function playNextAfterEnd(index) {
+    if (shuffleEnabled) {
+        let newIndex;
+        do {
+            newIndex = Math.floor(Math.random() * audioElements.length);
+        } while (newIndex === index && audioElements.length > 1);
+
+        playTrack(newIndex);
+        return;
+    }
+
+    const next = audioElements[index + 1];
+    if (next) {
+        playTrack(index + 1);
+    } else if (loopEnabled) {
+        playTrack(0);
+    } else {
+        currentIndex = -1;
+        globalPlayBtn.textContent = "Play";
+        globalProgressBar.style.width = "0%";
+        updateNowPlaying();
+        updatePlaybackState();
+    }
+}
+
+function toggleShuffle() {
+    shuffleEnabled = !shuffleEnabled;
+    shuffleBtn.textContent = shuffleEnabled ? "Shuffle: On" : "Shuffle: Off";
+}
+
+function toggleLoop() {
+    loopEnabled = !loopEnabled;
+    loopBtn.textContent = loopEnabled ? "Loop: On" : "Loop: Off";
+}
+
 function togglePlay(button) {
     const audio = button.closest(".song").querySelector("audio");
     const index = audioElements.indexOf(audio);
 
-    // If switching to a different track
     if (currentIndex !== index) {
         playTrack(index);
         return;
     }
 
-    // Toggle play/pause on the current track
     if (audio.paused) {
         audio.play();
-        button.textContent = "⏸";
-        globalPlayBtn.textContent = "⏸ Pause";
+        setSongButtonState(audio, true);
+        globalPlayBtn.textContent = "Pause";
     } else {
         audio.pause();
-        button.textContent = "▶";
-        globalPlayBtn.textContent = "▶ Play";
+        setSongButtonState(audio, false);
+        globalPlayBtn.textContent = "Play";
     }
 
     updateNowPlaying();
+    updatePlaybackState();
 }
 
 function toggleGlobalPlay() {
-    // If nothing has played yet
     if (currentIndex === -1) {
-
-        // If shuffle is ON → pick a random starting track
-        if (shuffleEnabled) {
-            let randomIndex = Math.floor(Math.random() * audioElements.length);
-            playTrack(randomIndex);
-            return;
-        }
-
-        // Otherwise start at track 0
-        playTrack(0);
+        const index = shuffleEnabled ? Math.floor(Math.random() * audioElements.length) : 0;
+        playTrack(index);
         return;
     }
 
-    // If a track is already selected, toggle play/pause
     const audio = audioElements[currentIndex];
-    const btn = audio.closest(".song").querySelector(".controls button");
-
     if (audio.paused) {
         audio.play();
-        globalPlayBtn.textContent = "⏸ Pause";
-        if (btn) btn.textContent = "⏸";
+        setSongButtonState(audio, true);
+        globalPlayBtn.textContent = "Pause";
     } else {
         audio.pause();
-        globalPlayBtn.textContent = "▶ Play";
-        if (btn) btn.textContent = "▶";
+        setSongButtonState(audio, false);
+        globalPlayBtn.textContent = "Play";
     }
 
     updateNowPlaying();
+    updatePlaybackState();
 }
-
 
 function nextTrack() {
     if (shuffleEnabled) {
@@ -167,105 +277,95 @@ function nextTrack() {
 }
 
 function prevTrack() {
-    // Need at least 2 items: previous + current
     if (playHistory.length > 1) {
-        // Remove current track
         playHistory.pop();
-
-        // Get previous track
         const previousIndex = playHistory[playHistory.length - 1];
 
-        // Play it WITHOUT modifying history
+        stopAllTracks();
         currentIndex = previousIndex;
 
         const audio = audioElements[currentIndex];
-
-        // Stop all others
-        audioElements.forEach((a) => {
-            a.pause();
-            a.currentTime = 0;
-            const btn = a.closest(".song").querySelector(".controls button");
-            if (btn) btn.textContent = "▶";
-        });
-
-        // Play previous
         audio.play();
-        const btn = audio.closest(".song").querySelector(".controls button");
-        if (btn) btn.textContent = "⏸";
-        globalPlayBtn.textContent = "⏸ Pause";
+        setSongButtonState(audio, true);
+        globalPlayBtn.textContent = "Pause";
 
         updateNowPlaying();
+        updatePlaybackState();
         return;
     }
 
-    // If no history, fallback to normal behavior
     if (currentIndex > 0) {
         playTrack(currentIndex - 1);
     } else if (loopEnabled) {
         playTrack(audioElements.length - 1);
     }
 }
+
 function stopPlayback() {
     if (currentIndex >= 0) {
         const audio = audioElements[currentIndex];
         audio.pause();
         audio.currentTime = 0;
-
-        const btn = audio.closest(".song").querySelector(".controls button");
-        if (btn) btn.textContent = "▶";
+        setSongButtonState(audio, false);
     }
 
     currentIndex = -1;
-    playHistory = []; // clear history
+    playHistory = [];
+    globalPlayBtn.textContent = "Play";
+    globalProgressBar.style.width = "0%";
 
-    globalPlayBtn.textContent = "▶ Play";
     updateNowPlaying();
+    updatePlaybackState();
 }
 
-function toggleLoop() {
-    loopEnabled = !loopEnabled;
-    loopBtn.textContent = loopEnabled ? "🔁 Loop: On" : "🔁 Loop: Off";
-}
+audioElements.forEach((audio, index) => {
+    audio.addEventListener("ended", () => {
+        playNextAfterEnd(index);
+    });
 
-audioElements.forEach((audio) => {
     audio.addEventListener("timeupdate", () => {
+        if (audio !== audioElements[currentIndex]) return;
+
+        const percent = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+        globalProgressBar.style.width = percent + "%";
+        updatePositionState();
+    });
+
+    audio.addEventListener("play", () => {
         if (audio === audioElements[currentIndex]) {
-            const percent = (audio.currentTime / audio.duration) * 100;
-            globalProgressBar.style.width = percent + "%";
+            updatePlaybackState();
+        }
+    });
+
+    audio.addEventListener("pause", () => {
+        if (audio === audioElements[currentIndex]) {
+            updatePlaybackState();
+        }
+    });
+
+    audio.addEventListener("loadedmetadata", () => {
+        if (audio === audioElements[currentIndex]) {
+            updateMediaSessionMetadata();
+        }
+    });
+
+    audio.addEventListener("ratechange", () => {
+        if (audio === audioElements[currentIndex]) {
+            updatePositionState();
         }
     });
 });
 
-globalProgressContainer.addEventListener("click", (e) => {
+globalProgressContainer.addEventListener("click", (event) => {
     if (currentIndex === -1) return;
 
     const audio = audioElements[currentIndex];
     const rect = globalProgressContainer.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
+    const clickX = event.clientX - rect.left;
     const percent = clickX / rect.width;
 
     audio.currentTime = percent * audio.duration;
+    updatePositionState();
 });
 
-
-// Update global progress bar as audio plays
-audioElements.forEach((audio) => {
-    audio.addEventListener("timeupdate", () => {
-        if (audio === audioElements[currentIndex]) {
-            const percent = (audio.currentTime / audio.duration) * 100;
-            globalProgressBar.style.width = percent + "%";
-        }
-    });
-});
-
-// Allow clicking the global bar to seek
-globalProgressContainer.addEventListener("click", (e) => {
-    if (currentIndex === -1) return;
-
-    const audio = audioElements[currentIndex];
-    const rect = globalProgressContainer.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const percent = clickX / rect.width;
-
-    audio.currentTime = percent * audio.duration;
-});
+registerMediaSessionHandlers();
