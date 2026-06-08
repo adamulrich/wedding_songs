@@ -25,7 +25,7 @@ function getTitleForAudio(audio) {
 function setSongButtonState(audio, isPlaying) {
     const button = audio.closest(".song").querySelector(".controls button");
     if (button) {
-        button.textContent = isPlaying ? "Pause" : "Play";
+        button.textContent = isPlaying ? "\u23F8" : "\u25B6";
     }
 }
 

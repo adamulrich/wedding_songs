@@ -1,4 +1,4 @@
-const VERSION = "v10";
+const VERSION = "v11";
 const SHELL_CACHE = `wedding-shell-${VERSION}`;
 const SONG_CACHE = `wedding-songs-${VERSION}`;
 
